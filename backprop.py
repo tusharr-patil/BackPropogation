@@ -1,10 +1,3 @@
-"""
-in order to do back prop I need to do forward pass first
-
-a * b = c 
-a -> * -> c 
-b
-"""
 import networkx as nx
 import matplotlib.pyplot as plt
 from graphviz import Digraph
