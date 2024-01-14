@@ -90,24 +90,31 @@ class Value:
             node._backward()
 
 
-# Neuron
-# wx = w * x
-# wx + b = L
+# w1 * x1 - w2 / x1 + b
 
 # Forward Pass
-w = Value(7)
-w.label = "w"
+w1 = Value(7)
+w1.label = "w1"
 
-x = Value(5)
-x.label = "x"
+x1 = Value(5)
+x1.label = "x1"
+
+w2 = Value(8)
+w2.label = "w2"
+
+x2 = Value(7)
+x2.label = "x2"
 
 b = Value(2)
 b.label = "b"
 
-wx = w * x
-wx.label = "wx"
+w1x1 = w1 * x1
+w1x1.label = "w1x1"
 
-L = wx + b
+w2x2 = w2 / x2
+w2x2.label = "w2x2"
+
+L = w1x1 - w2x2 + b
 L.label = "L"
 
 # Back Prop
