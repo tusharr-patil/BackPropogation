@@ -2,56 +2,92 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from graphviz import Digraph
 from IPython.display import SVG, display
+import math
+from math import exp, log
 
 
 class Value:
-    def __init__(self, data, parent=(), op="", label=""):
+    def __init__(self, data, _children=(), _op="", label=""):
         self.data = data
-        self.grad = 0
-        self.op = op
-        self.parent = set(parent)
-        self.backward = lambda: None
+        self.grad = 0.0
+        self._backward = lambda: None
+        self._parent = set(_children)
+        self._op = _op
         self.label = label
-
-    def __add__(self, other):
-        other = other if isinstance(other, Value) else Value(other)
-        next = Value(self.data + other.data, (self, other), "+")
-
-        def backward():
-            self.grad += 1.0 * next.grad  # chain rule
-            other.grad += 1.0 * next.grad
-
-        next.backward = backward
-        return next
-
-    def __mul__(self, other):
-        other = other if isinstance(other, Value) else Value(other)
-        next = Value(self.data * other.data, (self, other), "*")
-
-        def backward():
-            self.grad += other.data * next.grad
-            other.grad += self.data * next.grad
-
-        next.backward = backward
-        return next
 
     def __repr__(self):
         return f"Value(data={self.data})"
 
+    # add op
+    def __add__(self, other):
+        other = other if isinstance(other, Value) else Value(other)
+        out = Value(self.data + other.data, (self, other), "+")
+
+        def _backward():
+            self.grad += 1.0 * out.grad
+            other.grad += 1.0 * out.grad
+
+        out._backward = _backward
+
+        return out
+
+    def __radd__(self, other):
+        return self + other
+
+    #  unary op -> neg
+    def __neg__(self):
+        return -1 * self
+
+    # mul op
+    def __mul__(self, other):
+        other = other if isinstance(other, Value) else Value(other)
+        out = Value(self.data * other.data, (self, other), "*")
+
+        def _backward():
+            self.grad += other.data * out.grad
+            other.grad += self.data * out.grad
+
+        out._backward = _backward
+
+        return out
+
+    def __rmul__(self, other):
+        return self * other
+
+    # pow op
+    def __pow__(self, other):
+        assert isinstance(
+            other, (int, float)
+        ), "only supporting int/float powers for now"
+        out = Value(self.data**other, (self,), f"**{other}")
+
+        def _backward():
+            self.grad += other * (self.data ** (other - 1)) * out.grad
+
+        out._backward = _backward
+
+        return out
+
+    # div op
+    def __truediv__(self, other):
+        return self * other**-1
+
     def back_propogation(self):
         topo = []
-        vis = set()
+        visited = set()
 
         def build_topo(v):
-            if v not in vis:
-                vis.add(v)
-                for neighbour in v.parent:
-                    build_topo(neighbour)
+            if v not in visited:
+                visited.add(v)
+                for child in v._parent:
+                    build_topo(child)
                 topo.append(v)
 
         build_topo(self)
+
+        self.grad = 1.0
         for node in reversed(topo):
-            node.backward()
+            node._backward()
 
 
 # Draw the Graph
@@ -62,7 +98,7 @@ def trace(root):
     def build(v):
         if v not in nodes:
             nodes.add(v)
-            for child in v.parent:
+            for child in v._parent:
                 edges.add((child, v))
                 build(child)
 
@@ -82,15 +118,15 @@ def draw_dot(root):
             label="{ %s | data %.4f | grad %.4f }" % (n.label, n.data, n.grad),
             shape="record",
         )
-        if n.op:
+        if n._op:
             # if this value is a result of some operation, create an op node for it
-            dot.node(name=uid + n.op, label=n.op)
+            dot.node(name=uid + n._op, label=n._op)
             # and connect this node to it
-            dot.edge(uid + n.op, uid)
+            dot.edge(uid + n._op, uid)
 
     for n1, n2 in edges:
         # connect n1 to the op node of n2
-        dot.edge(str(id(n1)), str(id(n2)) + n2.op)
+        dot.edge(str(id(n1)), str(id(n2)) + n2._op)
 
     with open("output_graph.svg", "wb") as f:
         f.write(dot.pipe(format="svg"))
