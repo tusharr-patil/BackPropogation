@@ -90,7 +90,7 @@ class Value:
             node._backward()
 
 
-# w1 * x1 - w2 / x1 + b
+# w1 * x1 - w2 / x2 + b
 
 # Forward Pass
 w1 = Value(7)
